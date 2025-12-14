@@ -52,10 +52,8 @@ O objetivo é produzir documentação explicativa, formal e detalhada, incluindo
   - Identifica exatamente qual arquivo e chunk estão sendo processados, em que momento, com duração e modelo utilizado
 
 ## 3. Estrutura do projeto
-Estrutura típica (pode variar conforme evolução do repositório):
 
 ```
-
 forest-portal-helper/
 ├── src/
 │  └── forest_portal_helper/
@@ -69,7 +67,10 @@ forest-portal-helper/
 │        ├── rate_limiter.py
 │        ├── router.py
 │        └── ...
-├── config.yaml
+├── logs/ (é gerado localmente após rodar)
+├── pyproject.toml
+├── config.py
+├── .gitignore
 └── README.md
 
 ```
