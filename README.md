@@ -70,6 +70,7 @@ forest-portal-helper/
 ├── logs/ (é gerado localmente após rodar)
 ├── pyproject.toml
 ├── config.py
+├── config.yaml
 ├── .gitignore
 └── README.md
 
