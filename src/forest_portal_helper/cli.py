@@ -113,3 +113,11 @@ def file(
         raise
     finally:
         ev.close()
+
+
+def main() -> None:
+    app()
+
+
+if __name__ == "__main__":
+    main()

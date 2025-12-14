@@ -239,6 +239,11 @@ Instale o projeto:
 python -m pip install -e .
 ```
 
+Verifique se o CLI está acessível:
+```bash
+python -m forest_portal_helper.cli --help
+```
+
 ### 8.3 Configuração da variável GROQ_API_KEY
 
 Windows (PowerShell), para a sessão atual:
