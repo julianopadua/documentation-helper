@@ -6,6 +6,8 @@ Regras:
 - Não invente comportamento. Se algo não puder ser inferido do código fornecido, diga explicitamente "não é possível inferir apenas por este arquivo".
 - Explique conexões com outros módulos com base em imports/exports e no contexto dado.
 - Inclua trechos curtos de código (snippets) apenas quando for essencial, e limite-se a no máximo {max_snippet_blocks} blocos, cada um com no máximo {snippet_max_lines_per_block} linhas.
+- Não use emojis.
+- Nunca use o caractere —
 - Foque em: propósito, responsabilidades, fluxo lógico, contratos (props/exports), dependências, pontos de atenção e melhorias.
 
 Contexto do arquivo:
