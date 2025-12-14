@@ -1,13 +1,22 @@
 # forest-portal-helper
 
-## Introduction
+Gera documentação profunda (Markdown) para cada arquivo em `forest-portal/src`,
+replicando a estrutura e criando um `.md` por arquivo.
 
-Provide an overview of the project here. Describe the purpose and scope of the project.
+Layout padrão:
+- `src/components/Header.tsx` -> `generated/src/components/Header/Header.md`
 
-## How to Use
+## Setup (Windows)
 
-Explain how to set up and run the project. Include instructions on installation, configuration, and execution.
+1) Defina a chave:
+- PowerShell: `setx GROQ_API_KEY "SUA_CHAVE"`
 
-## Conclusion
+2) Instale em modo dev:
+- `python -m pip install -e .`
 
-Summarize the project and discuss any future developments or considerations.
+3) Gere docs:
+- `fphelper build`
+
+Comandos:
+- `fphelper build --force`
+- `fphelper models`

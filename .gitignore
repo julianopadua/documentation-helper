@@ -1,10 +1,13 @@
-# venv
-venv/
 __pycache__/
 *.pyc
-*.pyo
-*.zip
-*.log
+.venv/
+dist/
+build/
+*.egg-info/
+
+logs/
+state/
+generated/
+
 .env
-.DS_Store
-.ipynb_checkpoints/
+config.local.yaml

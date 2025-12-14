@@ -1,0 +1,20 @@
+[project]
+name = "forest-portal-helper"
+version = "0.1.0"
+description = "Generate deep Markdown documentation for forest-portal/src using Groq LLM routing + fallbacks."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "groq>=0.31.0",
+  "PyYAML>=6.0.1",
+  "typer>=0.12.3",
+  "rich>=13.7.1",
+  "pathspec>=0.12.1",
+  "httpx>=0.27.0",
+]
+
+[project.scripts]
+fphelper = "forest_portal_helper.cli:app"
+
+[tool.ruff]
+line-length = 100

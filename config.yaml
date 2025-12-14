@@ -1,7 +1,76 @@
-# configuration parameters
 paths:
-  data_raw: ./data/raw
-  data_processed: ./data/processed
-  images: ./images
-  report: ./report
-  addons: ./addons
+  forest_portal_root: "D:/Projetos/forest-portal"
+  forest_portal_src_rel: "src"
+
+  helper_root: "D:/Projetos/forest-portal-helper"
+  output_root_rel: "generated"     # helper_root/generated/...
+  state_dir_rel: "state"
+  logs_dir_rel: "logs"
+
+scan:
+  include_extensions: [".ts", ".tsx", ".js", ".jsx", ".css", ".scss", ".json", ".md"]
+  exclude_dirs: [".git", "node_modules", ".next", "dist", "build", "coverage"]
+  ignore_patterns:
+    - "**/*.d.ts"
+    - "**/*.test.*"
+    - "**/*.spec.*"
+    - "**/__tests__/**"
+    - "**/__mocks__/**"
+    - "**/*.snap"
+
+resolve:
+  ts_path_aliases:
+    "@/": "src/"
+
+docgen:
+  language: "pt-BR"
+  tone: "academico"
+  output_layout: "stem_folder"     # output/src/<parent>/<Stem>/<Stem>.md
+  write_project_index: true
+
+  # chunking
+  max_chars_per_request: 24000
+  chunk_overlap_lines: 30
+
+  # snippets no markdown final
+  snippet_max_lines_per_block: 80
+  max_snippet_blocks: 8
+
+  # template: builtin (vem dentro de src/forest_portal_helper/templates)
+  template_mode: "builtin"         # builtin | file
+  template_file_path: ""           # usado só se template_mode=file
+
+llm:
+  provider: "groq"
+  api_key_env: "GROQ_API_KEY"
+  api_key_fallback: "${GROQ_API_KEY}"
+
+  temperature: 0.2
+  top_p: 1
+  max_completion_tokens: 8192
+  stream: false
+
+  # IMPORTANTE: no plano $0, use on_demand (ou deixe vazio pra omitir e usar o default).
+  # Docs: default é on_demand. :contentReference[oaicite:2]{index=2}
+  service_tier: "on_demand"
+  reasoning_effort: "medium"
+
+  routing:
+    validate_with_models_endpoint: true
+    preferred_models:
+      - "openai/gpt-oss-120b"
+      - "groq/compound"
+      - "moonshotai/kimi-k2-instruct"
+      - "moonshotai/kimi-k2-instruct-0905"
+      - "llama-3.3-70b-versatile"
+      - "qwen/qwen3-32b"
+      - "openai/gpt-oss-20b"
+      - "llama-3.1-8b-instant"
+
+  retry:
+    max_attempts_per_model: 2
+    backoff_base_seconds: 1.0
+    backoff_max_seconds: 20.0
+
+performance:
+  max_concurrency: 4
