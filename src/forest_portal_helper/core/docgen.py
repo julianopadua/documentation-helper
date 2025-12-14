@@ -97,15 +97,25 @@ async def generate_docs(cfg: AppCfg, force: bool = False) -> None:
         raise RuntimeError("GROQ_API_KEY ausente. Defina env var ou llm.api_key_fallback.")
 
     groq = GroqClient(api_key=api_key)
+    
+    service_tier = (cfg.llm.service_tier or "").strip()
+    # on_demand é default quando omitido. :contentReference[oaicite:6]{index=6}
+    if service_tier.lower() in {"", "on_demand"}:
+        service_tier_val = None
+    else:
+        service_tier_val = service_tier
+
+    reasoning_effort = (cfg.llm.reasoning_effort or "").strip() or None
 
     params = GroqParams(
         temperature=cfg.llm.temperature,
         top_p=cfg.llm.top_p,
         max_completion_tokens=cfg.llm.max_completion_tokens,
         stream=cfg.llm.stream,
-        service_tier=cfg.llm.service_tier,
-        reasoning_effort=cfg.llm.reasoning_effort,
+        service_tier=service_tier_val,
+        reasoning_effort=reasoning_effort,
     )
+
 
     policy = RoutingPolicy(
         preferred_models=cfg.llm.routing.preferred_models,
