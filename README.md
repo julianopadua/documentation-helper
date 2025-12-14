@@ -1,4 +1,4 @@
-# Forest Portal Helper
+# Documentation Helper
 Geração automatizada de documentação técnica (Markdown) a partir de código-fonte, com LLM routing, controle de rate limiting e execução interativa via terminal.
 
 ## Tabela de conteúdos
@@ -30,7 +30,7 @@ Geração automatizada de documentação técnica (Markdown) a partir de código
 
 
 ## 1. Visão geral
-O Forest Portal Helper é uma ferramenta para gerar documentação técnica em Markdown a partir do código-fonte de um projeto. O processo percorre arquivos selecionados (por extensões), divide o conteúdo em partes menores (chunks), envia cada chunk para um modelo via API (Groq), consolida o resultado e salva a documentação espelhando a estrutura do projeto de origem.
+O Documentation Helper é uma ferramenta para gerar documentação técnica em Markdown a partir do código-fonte de um projeto. O processo percorre arquivos selecionados (por extensões), divide o conteúdo em partes menores (chunks), envia cada chunk para um modelo via API (Groq), consolida o resultado e salva a documentação espelhando a estrutura do projeto de origem.
 
 O objetivo é produzir documentação explicativa, formal e detalhada, incluindo trechos relevantes do código, conexões entre arquivos, imports e relações no grafo de dependências, com foco em consistência e rastreabilidade do que foi gerado e quando foi gerado.
 
@@ -213,7 +213,7 @@ Boas práticas:
 
 ### 8.2 Instalação
 
-Na raiz do projeto forest-portal-helper:
+Na raiz do projeto:
 
 ```bash
 python -m venv venv
