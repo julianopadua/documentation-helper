@@ -291,8 +291,6 @@ python -m forest_portal_helper.cli build
 python -m forest_portal_helper.cli file "components/Header.tsx"
 ```
 
-Se o projeto estiver empacotado com console script (quando configurado), pode existir um comando curto como fphelper. Se não existir, use os comandos python -m acima.
-
 ## 9. Solução de problemas
 
 ### 9.1 Erro 429 Too Many Requests
