@@ -1,13 +1,16 @@
+# src/forest_portal_helper/llm/router.py
 from __future__ import annotations
 
 import asyncio
 import logging
 import random
 from dataclasses import dataclass, replace
+from typing import Mapping
 
-from groq import APIStatusError
+from groq import APIStatusError, RateLimitError
 
-from forest_portal_helper.llm.groq_client import GroqClient, GroqParams, parse_retry_after_seconds
+from forest_portal_helper.llm.groq_client import GroqClient, GroqParams
+from forest_portal_helper.llm.rate_limiter import RateLimiter
 
 log = logging.getLogger("forest_portal_helper.router")
 
@@ -21,9 +24,6 @@ class RoutingPolicy:
 
 
 def _safe_error_info(e: APIStatusError) -> tuple[str, str]:
-    """
-    Retorna (type, message) tentando ler o JSON padrão do OpenAI-compatible.
-    """
     try:
         body = e.response.json()
         err = body.get("error", {}) if isinstance(body, dict) else {}
@@ -33,15 +33,19 @@ def _safe_error_info(e: APIStatusError) -> tuple[str, str]:
 
 
 class ModelRouter:
-    def __init__(self, groq: GroqClient, policy: RoutingPolicy, params: GroqParams) -> None:
+    def __init__(
+        self,
+        groq: GroqClient,
+        policy: RoutingPolicy,
+        params: GroqParams,
+        limiter: RateLimiter,
+    ) -> None:
         self.groq = groq
         self.policy = policy
         self.params = params
+        self.limiter = limiter
 
-        # Se sua org não aceita auto/flex, a gente rebaixa e mantém aqui.
         self._forced_service_tier: str | None = None
-
-        # Modelos que deram erro 4xx “estrutural” (incompatível) nesta execução.
         self._disabled_models: set[str] = set()
 
     async def validate_models(self) -> list[str]:
@@ -62,59 +66,71 @@ class ModelRouter:
                 continue
 
             for attempt in range(1, self.policy.max_attempts_per_model + 1):
-                # aplica “forced service tier” se detectarmos que sua org não suporta auto/flex
                 eff_params = self.params
                 if self._forced_service_tier:
                     eff_params = replace(eff_params, service_tier=self._forced_service_tier)
 
                 try:
-                    txt = await self.groq.chat(model=model, messages=messages, params=eff_params)
+                    await self.limiter.wait_for_slot()
+                    txt, headers = await self.groq.chat_raw(model=model, messages=messages, params=eff_params)
+                    self.limiter.on_success_headers(headers)
                     return txt, model
+
+                except RateLimitError as e:
+                    last_err = e
+                    hdrs: Mapping[str, str] = {}
+                    try:
+                        if getattr(e, "response", None) is not None:
+                            hdrs = e.response.headers
+                    except Exception:
+                        hdrs = {}
+                    self.limiter.on_rate_limited(hdrs)
+                    log.warning("429 no modelo=%s attempt=%s; aguardando janela de rate limit.", model, attempt)
+                    continue
 
                 except APIStatusError as e:
                     last_err = e
                     status = getattr(e.response, "status_code", None)
                     etype, emsg = _safe_error_info(e)
 
-                    # 429: respeitar retry-after se existir
+                    # 429 via APIStatusError também
                     if status == 429:
-                        ra = parse_retry_after_seconds(e)
-                        sleep_s = ra if ra is not None else self._jitter_backoff(attempt)
-                        log.warning("429 no modelo=%s attempt=%s; dormindo %.2fs", model, attempt, sleep_s)
-                        await asyncio.sleep(sleep_s)
+                        self.limiter.on_rate_limited(e.response.headers)
+                        log.warning("429 no modelo=%s attempt=%s; aguardando janela de rate limit.", model, attempt)
                         continue
 
-                    # flex pode falhar rápido com 498 capacity_exceeded. Rebaixa pra on_demand. :contentReference[oaicite:5]{index=5}
-                    if status == 498 and "capacity_exceeded" in emsg.lower():
-                        log.warning("498 capacity_exceeded (provável flex). Rebaixando para on_demand e repetindo.")
-                        self._forced_service_tier = "on_demand"
-                        await asyncio.sleep(0.2)
-                        continue
-
-                    # Seu caso: 400 dizendo que service_tier=auto não é permitido.
+                    # service_tier não permitido (plano free) -> força on_demand e tenta novamente
                     if status == 400 and "service_tier" in emsg and "not available for this org" in emsg:
-                        log.warning("service_tier inválido pra sua org. Forçando on_demand e repetindo.")
+                        log.warning("service_tier inválido para sua org. Forçando on_demand e repetindo.")
                         self._forced_service_tier = "on_demand"
                         await asyncio.sleep(0.2)
                         continue
 
-                    # 5xx: backoff e tenta de novo
+                    # flex capacity_exceeded (se acontecer) -> rebaixa para on_demand e tenta novamente
+                    if status == 498 and "capacity_exceeded" in emsg.lower():
+                        log.warning("capacity_exceeded (provável flex). Forçando on_demand e repetindo.")
+                        self._forced_service_tier = "on_demand"
+                        await asyncio.sleep(0.2)
+                        continue
+
                     if status and int(status) >= 500:
                         sleep_s = self._jitter_backoff(attempt)
-                        log.warning("5xx=%s no modelo=%s attempt=%s; dormindo %.2fs", status, model, attempt, sleep_s)
+                        log.warning("5xx=%s no modelo=%s; dormindo %.2fs", status, model, sleep_s)
                         await asyncio.sleep(sleep_s)
                         continue
 
-                    # 4xx “estrutural”: marca modelo como não utilizável nesta execução e cai pro próximo
+                    # 4xx estrutural: desabilita modelo nesta execução
                     if status and int(status) in {400, 404, 422}:
                         log.warning(
-                            "4xx estrutural no modelo=%s (status=%s type=%s). Desabilitando este modelo nesta execução. msg=%s",
-                            model, status, etype, emsg
+                            "4xx estrutural no modelo=%s (status=%s type=%s). Desabilitando. msg=%s",
+                            model,
+                            status,
+                            etype,
+                            emsg,
                         )
                         self._disabled_models.add(model)
                         break
 
-                    # default: cai pro próximo modelo
                     log.warning("Erro status=%s no modelo=%s. Próximo modelo. msg=%s", status, model, emsg)
                     break
 

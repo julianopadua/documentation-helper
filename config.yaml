@@ -51,7 +51,7 @@ llm:
   stream: false
 
   # IMPORTANTE: no plano $0, use on_demand (ou deixe vazio pra omitir e usar o default).
-  # Docs: default é on_demand. :contentReference[oaicite:2]{index=2}
+  # Docs: default é on_demand.
   service_tier: "on_demand"
   reasoning_effort: "medium"
 
@@ -67,10 +67,17 @@ llm:
       - "openai/gpt-oss-20b"
       - "llama-3.1-8b-instant"
 
+  throttle:
+    enabled: true
+    # 30 RPM => ~2s por request. Use 2.2s pra não bater no teto.
+    min_interval_seconds: 2.2
+    # se tokens restantes estiverem baixos, espera reset
+    min_remaining_tokens: 800
+
   retry:
     max_attempts_per_model: 2
     backoff_base_seconds: 1.0
     backoff_max_seconds: 20.0
 
 performance:
-  max_concurrency: 4
+  max_concurrency: 1

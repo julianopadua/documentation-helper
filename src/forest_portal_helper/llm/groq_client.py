@@ -1,11 +1,10 @@
+# src/forest_portal_helper/llm/groq_client.py
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
-import httpx
 from groq import AsyncGroq
-from groq import APIStatusError
 
 
 @dataclass(frozen=True)
@@ -20,11 +19,11 @@ class GroqParams:
 
 def _effective_reasoning_effort(model: str, requested: str | None) -> str | None:
     """
-    Groq docs:
-    - GPT-OSS 20B/120B: low|medium|high
-    - Qwen3-32B: none|default
-    Outros modelos: não suportam -> não enviar o parâmetro.
-    :contentReference[oaicite:3]{index=3}
+    Aplica reasoning_effort só quando fizer sentido.
+
+    - openai/gpt-oss-20b | openai/gpt-oss-120b: low|medium|high
+    - qwen/qwen3-32b: none|default
+    - demais modelos: não enviar reasoning_effort
     """
     if not requested:
         return None
@@ -34,7 +33,6 @@ def _effective_reasoning_effort(model: str, requested: str | None) -> str | None
     if m in {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}:
         if requested in {"low", "medium", "high"}:
             return requested
-        # se vier "default", mapeia pra medium
         if requested == "default":
             return "medium"
         return None
@@ -42,7 +40,6 @@ def _effective_reasoning_effort(model: str, requested: str | None) -> str | None
     if m in {"qwen/qwen3-32b"}:
         if requested in {"none", "default"}:
             return requested
-        # se usuário configurou low/medium/high, converte pra "default"
         if requested in {"low", "medium", "high"}:
             return "default"
         return None
@@ -52,59 +49,53 @@ def _effective_reasoning_effort(model: str, requested: str | None) -> str | None
 
 class GroqClient:
     def __init__(self, api_key: str, timeout_s: float = 90.0) -> None:
-        self._api_key = api_key
-        self._client = AsyncGroq(api_key=api_key, timeout=timeout_s)
+        self._client = AsyncGroq(
+            api_key=api_key,
+            timeout=timeout_s,
+            max_retries=0,  # controle de retry fica no router + rate limiter
+        )
 
     async def close(self) -> None:
         await self._client.close()
 
     async def list_models(self) -> set[str]:
-        url = "https://api.groq.com/openai/v1/models"
-        headers = {"Authorization": f"Bearer {self._api_key}"}
-        async with httpx.AsyncClient(timeout=30.0) as c:
-            r = await c.get(url, headers=headers)
-            r.raise_for_status()
-            data = r.json().get("data", [])
-            return {m.get("id") for m in data if m.get("id")}
+        resp = await self._client.models.list()
+        return {m.id for m in resp.data if getattr(m, "id", None)}
 
-    async def chat(self, model: str, messages: list[dict[str, str]], params: GroqParams) -> str:
+    async def chat_raw(
+        self,
+        model: str,
+        messages: list[dict[str, str]],
+        params: GroqParams,
+    ) -> tuple[str, Mapping[str, str]]:
+        """
+        Faz uma chamada de chat e retorna (texto, headers).
+        Usamos raw response para conseguir ler headers de rate limit.
+        """
+        if params.stream:
+            raise RuntimeError("stream=True não suportado com chat_raw (precisamos de headers).")
+
         eff_reason = _effective_reasoning_effort(model, params.reasoning_effort)
 
-        # Monta kwargs de forma segura (omitir params que quebram em certos modelos/planos).
         kwargs: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "temperature": params.temperature,
             "top_p": params.top_p,
             "max_completion_tokens": params.max_completion_tokens,
-            "stream": params.stream,
+            "stream": False,
         }
 
-        # service_tier default é on_demand quando omitido. :contentReference[oaicite:4]{index=4}
+        # on_demand é default quando omitido; então só enviamos se vier algo diferente de None.
         if params.service_tier:
             kwargs["service_tier"] = params.service_tier
 
         if eff_reason:
             kwargs["reasoning_effort"] = eff_reason
 
-        if not params.stream:
-            resp = await self._client.chat.completions.create(**kwargs)
-            return resp.choices[0].message.content or ""
+        raw = await self._client.chat.completions.with_raw_response.create(**kwargs)
+        headers = raw.headers
+        completion = await raw.parse()
 
-        chunks: list[str] = []
-        stream = await self._client.chat.completions.create(**kwargs)
-        async for part in stream:
-            delta = part.choices[0].delta.content or ""
-            if delta:
-                chunks.append(delta)
-        return "".join(chunks)
-
-
-def parse_retry_after_seconds(e: APIStatusError) -> float | None:
-    try:
-        hdr = e.response.headers.get("retry-after")
-        if not hdr:
-            return None
-        return float(hdr)
-    except Exception:
-        return None
+        text = completion.choices[0].message.content or ""
+        return text, headers

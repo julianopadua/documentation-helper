@@ -58,6 +58,13 @@ class PathsCfg:
 
 
 @dataclass(frozen=True)
+class ThrottleCfg:
+    enabled: bool
+    min_interval_seconds: float
+    min_remaining_tokens: int
+
+
+@dataclass(frozen=True)
 class ScanCfg:
     include_extensions: list[str]
     exclude_dirs: list[str]
@@ -109,6 +116,7 @@ class LlmCfg:
     reasoning_effort: str
     routing: LlmRoutingCfg
     retry: LlmRetryCfg
+    throttle: ThrottleCfg
 
 
 @dataclass(frozen=True)
@@ -174,6 +182,13 @@ def load_config(config_path: Path) -> AppCfg:
         backoff_base_seconds=float(l["retry"]["backoff_base_seconds"]),
         backoff_max_seconds=float(l["retry"]["backoff_max_seconds"]),
     )
+    t = l.get("throttle", {})
+    throttle = ThrottleCfg(
+        enabled=bool(t.get("enabled", True)),
+        min_interval_seconds=float(t.get("min_interval_seconds", 2.2)),
+        min_remaining_tokens=int(t.get("min_remaining_tokens", 800)),
+    )
+
     llm = LlmCfg(
         provider=l["provider"],
         api_key_env=l["api_key_env"],
@@ -182,10 +197,11 @@ def load_config(config_path: Path) -> AppCfg:
         top_p=float(l["top_p"]),
         max_completion_tokens=int(l["max_completion_tokens"]),
         stream=bool(l["stream"]),
-        service_tier=l.get("service_tier", "auto"),
+        service_tier=l.get("service_tier", "on_demand"),
         reasoning_effort=l.get("reasoning_effort", "medium"),
         routing=routing,
         retry=retry,
+        throttle=throttle,
     )
 
     perf = raw.get("performance", {})
