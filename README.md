@@ -2,29 +2,32 @@
 Geração automatizada de documentação técnica (Markdown) a partir de código-fonte, com LLM routing, controle de rate limiting e execução interativa via terminal.
 
 ## Tabela de conteúdos
-1. Visão geral
-2. Principais funcionalidades
-3. Estrutura do projeto
-4. Como funciona a geração de documentação
-   1. Espelhamento de estrutura
-   2. Chunking e merge
-   3. Cache e modo continuar
-5. Logs e rastreabilidade
-   1. Log textual
-   2. Log estruturado (JSONL)
-   3. Onde os logs são salvos
-6. Configuração
-   1. config.yaml
-   2. Parâmetros de LLM e routing
-   3. Controle de rate limit e concorrência
-7. Como obter uma API key da Groq
-8. Como rodar no seu PC
-   1. Pré-requisitos
-   2. Instalação
-   3. Configuração da variável GROQ_API_KEY
-   4. Execução (wizard, build e file)
-9. Solução de problemas
-10. Considerações finais
+- [Visão geral](#1-visão-geral)
+- [Principais funcionalidades](#2-principais-funcionalidades)
+- [Estrutura do projeto](#3-estrutura-do-projeto)
+- [Como funciona a geração de documentação](#4-como-funciona-a-geração-de-documentação)
+  - [Espelhamento de estrutura](#41-espelhamento-de-estrutura)
+  - [Chunking e merge](#42-chunking-e-merge)
+  - [Cache e modo continuar](#43-cache-e-modo-continuar)
+- [Logs e rastreabilidade](#5-logs-e-rastreabilidade)
+  - [Log textual](#51-log-textual)
+  - [Log estruturado (JSONL)](#52-log-estruturado-jsonl)
+  - [Onde os logs são salvos](#53-onde-os-logs-são-salvos)
+- [Configuração](#6-configuração)
+  - [config.yaml](#61-configyaml)
+  - [Parâmetros de LLM e routing](#62-parâmetros-de-llm-e-routing)
+  - [Controle de rate limit e concorrência](#63-controle-de-rate-limit-e-concorrência)
+- [Como obter uma API key da Groq](#7-como-obter-uma-api-key-da-groq)
+- [Como rodar no seu PC](#8-como-rodar-no-seu-pc)
+  - [Pré-requisitos](#81-pré-requisitos)
+  - [Instalação](#82-instalação)
+  - [Configuração da variável GROQ_API_KEY](#83-configuração-da-variável-groq_api_key)
+  - [Execução](#84-execução)
+- [Solução de problemas](#9-solução-de-problemas)
+  - [Erro 429 Too Many Requests](#91-erro-429-too-many-requests)
+  - [Erro 400 relacionado a service_tier](#92-erro-400-relacionado-a-service_tier)
+  - [Onde verificar o que está sendo gerado](#93-onde-verificar-o-que-está-sendo-gerado)
+
 
 ## 1. Visão geral
 O Forest Portal Helper é uma ferramenta para gerar documentação técnica em Markdown a partir do código-fonte de um projeto. O processo percorre arquivos selecionados (por extensões), divide o conteúdo em partes menores (chunks), envia cada chunk para um modelo via API (Groq), consolida o resultado e salva a documentação espelhando a estrutura do projeto de origem.
@@ -319,14 +322,8 @@ Os tiers aceitos e a semântica do parâmetro estão documentados pela Groq. ([G
 
 Consulte:
 
-* run_<run_id>.log para logs textuais
-* events_<run_id>.jsonl para rastreio estruturado por arquivo e chunk
-
-## 10. Considerações finais
-
-O Forest Portal Helper foi projetado para ser modular, auditável e robusto em cenários reais de rate limit. A execução interativa e o logging estruturado tornam o processo rastreável e mais seguro para evoluções futuras, como presets de estilo, múltiplas estratégias de documentação e suporte a provedores adicionais além do Groq.
-
-Este README descreve o estado atual do fluxo e deve ser mantido alinhado a cada evolução do pipeline.
+* logs/run_<run_id>.log para logs textuais
+* logs/events_<run_id>.jsonl para rastreio estruturado por arquivo e chunk
 
 [1]: https://console.groq.com/docs/service-tiers "Service Tiers - GroqDocs"
 [2]: https://console.groq.com/docs/rate-limits "Rate Limits - GroqDocs"
